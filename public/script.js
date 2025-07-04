@@ -13,7 +13,7 @@ let ordemAtual = { campo: "nome", crescente: true };
 // Função assíncrona que carrega os usuários da API
 async function carregarUsuarios() {
   // Faz uma requisição para a API que retorna 200 usuários
-  const resposta = await fetch("http://0.0.0.0:3000/list-users/200"); //Testar passando como parâmetro 1000000
+  const resposta = await fetch("http://10.102.224.72:5000/list-users/200"); //Testar passando como parâmetro 1000000
 
   // Converte a resposta em JSON e armazena no array global
   usuarios = await resposta.json();

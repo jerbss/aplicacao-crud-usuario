@@ -11,8 +11,8 @@ const ARQUIVO = "usuarios.json";
 const app = express();
 
 // Define o endereço e porta em que o servidor vai escutar
-const HOST = "0.0.0.0"; //http://10.102.225.17:3000
-const PORT = 3000;
+const HOST = process.env.HOST || "localhost";
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json()); //ativa parser JSON para este projeto
 
@@ -27,12 +27,21 @@ app.use(cors());
  * Função que lê o arquivo usuarios.json e retorna até 'qtd' usuários
  * Se houver erro na leitura, retorna um array vazio
  */
-function lerUsuarios() {
+function lerUsuarios(max=0) {
   try {
     const dados = fs.readFileSync("usuarios.json", "utf-8"); // Lê o conteúdo do arquivo
     const usuarios = JSON.parse(dados); // Converte a string JSON em array de objetos
+    let algunsUsuarios = [];
 
-    return usuarios;
+    if (max === 0) {
+      max = usuarios.length;
+    }
+
+    for (let cont = 0; cont < max; cont++) {
+      algunsUsuarios[cont] = usuarios[cont];
+    }
+
+    return algunsUsuarios;
   } catch (erro) {
     // Em caso de erro (arquivo ausente ou malformado), exibe no console e retorna array vazio
     console.error("Erro ao ler o arquivo usuarios.json:", erro);
@@ -86,7 +95,7 @@ app.get("/list-users/:count?", (req, res) => {
   // if (isNaN(num)) num=100;
   // if (num < 100) num = 100;
   // if (num > 100_000) num = 100_000;
-
+  console.log(num);
   // Envia os usuários lidos como resposta JSON
   res.json(lerUsuarios(num));
 });
