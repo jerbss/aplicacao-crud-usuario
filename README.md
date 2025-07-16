@@ -80,21 +80,25 @@ node gerar_usuarios_fake.js
 O funcionamento da funcionalidade de geração dos usuários _fake_ se eoncontra no arquivo `criando-json-usuarios.md`, que pode ser acessado através deste link: [acesso à explicação]("./criando-json-usuarios.md").
 
 ---
-
-### 1. Clone o repositório
+### 1. Crie um arquivo .env na raíz do projeto e adicione essas duas linhas
+```bash
+PORT=3000
+DB_HOST=localhost
+```
+### 2. Clone o repositório
 
 ```bash
 git clone https://github.com/seuusuario/usuarios-app.git
 cd usuarios-app
 ```
 
-### 2. Instale as dependências
+### 3. Instale as dependências
 
 ```bash
 npm install
 ```
 
-### 3. Execute a API de geração de usuários
+### 4. Execute a API de geração de usuários
 
 ```bash
 npm start
