@@ -310,6 +310,19 @@ _Comparação_
 
 Portanto: "bat" vem depois de "ban".
 
+**IMPORTANTE**
+Criei uma rotina que permite testar este código e coloquei dentro deste repositório. Para testá-la, basta:
+
+```bash
+node teste-ordena-bubblesort.js
+```
+
+Também criei uma rotina que permite ver o método de comparação passo a passo:
+
+```bash
+node teste-ordena-bubblesort-passo-a-passo.js
+```
+
 ---
 
 ### Compara as strings completas
@@ -332,6 +345,19 @@ function comparaStrings(str1, str2) {
 
   return 0; // Strings idênticas
 }
+```
+
+**IMPORTANTE**
+Criei uma rotina que permite testar este código e coloquei dentro deste repositório. Para testá-la, basta:
+
+```bash
+node teste-compara-strings.js
+```
+
+Também criei uma rotina que permite ver o método de comparação passo a passo:
+
+```bash
+node teste-compara-strings-passo-a-passo.js
 ```
 
 ---

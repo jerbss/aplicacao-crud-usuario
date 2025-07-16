@@ -1,106 +1,123 @@
-// Importa os módulos necessários
-const express = require("express"); // Framework para criação de aplicações web
-const cors = require("cors"); // Middleware para permitir requisições entre domínios (Cross-Origin)
-const path = require("path"); // Módulo para lidar com caminhos de arquivos de forma segura
-const fs = require("fs"); // Módulo para manipulação de arquivos do sistema
-const { v4: uuidv4 } = require("uuid");
+/**
+ * server.js
+ *
+ * Servidor Express para cadastro e listagem de usuários usando armazenamento em arquivo JSON com controle de concorrência.
+ *
+ * Funcionalidades:
+ * - Servir arquivos estáticos da pasta /public (ex: index.html).
+ * - Rota GET /list-users/:count? para listar até N usuários cadastrados.
+ * - Rota POST /cadastrar-usuario para cadastrar novo usuário com ID único.
+ * - Persistência em arquivo JSON com bloqueio de escrita/leitura seguro (via proper-lockfile).
+ *
+ * Autor: Wellington (com pitacos do Braniac 😎)
+ * Data: 2025
+ */
 
-const ARQUIVO = "usuarios.json";
+// -----------------------------------------------------------------------------
+// IMPORTAÇÃO DE MÓDULOS
+// -----------------------------------------------------------------------------
 
-// Inicializa o app Express
-const app = express();
+const express = require("express"); // Framework para criação de APIs e servidores HTTP
+const cors = require("cors"); // Middleware para permitir requisições de outras origens (CORS)
+const path = require("path"); // Lida com caminhos de arquivos e diretórios
+const { v4: uuidv4 } = require("uuid"); // Gera IDs únicos universais (UUID v4)
 
-// Define o endereço e porta em que o servidor vai escutar
+const { lerUsuarios, salvarUsuarios } = require("./users-control.js"); // Módulo de controle de leitura/escrita com lock
+
+// -----------------------------------------------------------------------------
+// CONFIGURAÇÃO DO SERVIDOR
+// -----------------------------------------------------------------------------
+
+const app = express(); // Cria uma aplicação Express
+
+// Define o host e a porta (usa variáveis de ambiente se existirem)
 const HOST = process.env.HOST || "localhost";
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json()); //ativa parser JSON para este projeto
+// Ativa o parser de JSON para o corpo das requisições
+app.use(express.json());
 
-// Configura o Express para servir arquivos estáticos da pasta "public"
-// Isso permite acessar arquivos como index.html diretamente
+// Define a pasta "public" como estática (servirá arquivos HTML, CSS, etc.)
 app.use(express.static(path.join(__dirname, "public")));
 
-// Ativa o CORS para permitir chamadas HTTP de outras origens (por exemplo, frontend em outro servidor)
+// Habilita CORS para permitir requisições de outras origens
 app.use(cors());
 
+// -----------------------------------------------------------------------------
+// ROTAS
+// -----------------------------------------------------------------------------
+
 /**
- * Função que lê o arquivo usuarios.json e retorna até 'qtd' usuários
- * Se houver erro na leitura, retorna um array vazio
+ * Rota principal - GET /
+ * Retorna o arquivo HTML inicial (index.html) da pasta "public"
  */
-function lerUsuarios(max=0) {
-  try {
-    const dados = fs.readFileSync("usuarios.json", "utf-8"); // Lê o conteúdo do arquivo
-    const usuarios = JSON.parse(dados); // Converte a string JSON em array de objetos
-    let algunsUsuarios = [];
-
-    if (max === 0) {
-      max = usuarios.length;
-    }
-
-    for (let cont = 0; cont < max; cont++) {
-      algunsUsuarios[cont] = usuarios[cont];
-    }
-
-    return algunsUsuarios;
-  } catch (erro) {
-    // Em caso de erro (arquivo ausente ou malformado), exibe no console e retorna array vazio
-    console.error("Erro ao ler o arquivo usuarios.json:", erro);
-    return [];
-  }
-}
-
-let usuarios = lerUsuarios();
-/**
- * Salva o Array de usuários passado como argumento, para um arquivo JSON.
- *
- * Args:
- *   usuarios (Array): Array de Objetos.
- */
-function salvarUsuarios(usuarios) {
-  fs.writeFileSync(ARQUIVO, JSON.stringify(usuarios, null, 2), "utf8");
-}
-
-// Rota principal ("/")
-// Envia o arquivo index.html que está na pasta "public"
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public") + "index.html");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.post("/cadastrar-usuario", (req, res) => {
-  console.log(usuarios.length);
+/**
+ * Rota GET /list-users/:count?
+ * Retorna um número limitado de usuários do arquivo usuarios.json
+ *
+ * @param {number} count (opcional) - número máximo de usuários a retornar (default: 100)
+ */
+app.get("/list-users/:count?", async (req, res) => {
+  let num = parseInt(req.params.count, 10); // Converte o parâmetro para número inteiro
+  if (isNaN(num)) num = 100; // Valor padrão se não for fornecido
+  num = Math.max(1, Math.min(10000, num)); // Garante que o número esteja entre 1 e 10.000
 
-  const novoUsuario = {
-    id: uuidv4(),
-    nome: req.body.nome,
-    idade: req.body.idade,
-    endereco: req.body.endereco,
-    email: req.body.email,
-  };
-  usuarios.push(novoUsuario);
-  salvarUsuarios(usuarios);
-  //res.status(200);
-  res.status(201).json({
-    ok: true,
-    message: "Usuário cadastrado com sucesso!",
-    usuario: novoUsuario,
-  });
+  console.log(`🔍 Solicitando até ${num} usuários...`);
+  try {
+    const todos = await lerUsuarios(); // Lê todos os usuários do arquivo
+    const slice = todos.slice(0, num); // Pega os primeiros N usuários
+    console.log(`✔️  Primeiro usuário: ${JSON.stringify(slice[0])}`);
+    res.json(slice); // Retorna os usuários como JSON
+  } catch (err) {
+    console.error("❌ Falha ao ler usuários:", err);
+    res.status(500).json({ error: "Não foi possível ler usuários." });
+  }
 });
 
-// Rota "/list-users/:count?"
-// Retorna um JSON com até 'count' usuários do arquivo usuarios.json
-app.get("/list-users/:count?", (req, res) => {
-  let num = parseInt(req.params.count); // Lê o parâmetro :count e converte para número
+/**
+ * Rota POST /cadastrar-usuario
+ * Recebe dados no corpo da requisição e adiciona um novo usuário ao arquivo JSON.
+ *
+ * @body {string} nome - Nome do usuário
+ * @body {number} idade - Idade do usuário
+ * @body {string} endereco - Endereço
+ * @body {string} email - E-mail
+ */
+app.post("/cadastrar-usuario", async (req, res) => {
+  try {
+    const usuarios = await lerUsuarios(); // Garante dados atualizados
 
-  // Define valor padrão e limites de segurança
-  // if (isNaN(num)) num=100;
-  // if (num < 100) num = 100;
-  // if (num > 100_000) num = 100_000;
-  console.log(num);
-  // Envia os usuários lidos como resposta JSON
-  res.json(lerUsuarios(num));
+    const novoUsuario = {
+      id: uuidv4(), // Gera um UUID para o novo usuário
+      nome: req.body.nome,
+      idade: req.body.idade,
+      endereco: req.body.endereco,
+      email: req.body.email,
+    };
+
+    usuarios.push(novoUsuario); // Adiciona à lista
+    await salvarUsuarios(usuarios); // Salva no arquivo com lock
+    console.log(`✔️ Usuário cadastrado: ${JSON.stringify(novoUsuario)}`);
+    res.status(201).json({
+      ok: true,
+      message: "Usuário cadastrado com sucesso!",
+      usuario: novoUsuario,
+    });
+  } catch (err) {
+    console.error("❌ Erro ao cadastrar usuário:", err);
+    res.status(500).json({ error: "Não foi possível cadastrar usuário." });
+  }
 });
 
-// Inicia o servidor e exibe a URL no console
+// -----------------------------------------------------------------------------
+// EXECUÇÃO DO SERVIDOR
+// -----------------------------------------------------------------------------
+
+// Inicia o servidor e escuta na porta especificada
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Servidor rodando em http://${HOST}:${PORT}`);
 });

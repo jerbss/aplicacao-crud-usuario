@@ -13,10 +13,15 @@ let ordemAtual = { campo: "nome", crescente: true };
 // Função assíncrona que carrega os usuários da API
 async function carregarUsuarios() {
   // Faz uma requisição para a API que retorna 200 usuários
-  const resposta = await fetch("http://10.102.224.72:5000/list-users/200"); //Testar passando como parâmetro 1000000
+  const resposta = await fetch("/list-users/1000000"); //Testar passando como parâmetro 1000000
 
   // Converte a resposta em JSON e armazena no array global
   usuarios = await resposta.json();
+
+  console.log("Carregando usuários...");
+  console.log("Resposta da API:", resposta.status, resposta.statusText);
+  console.log("Resposta da API:", resposta.headers.get("Content-Type"));
+  console.log("Total de usuários carregados:", usuarios.length);
 
   // Atualiza a interface com os dados recebidos
   atualizarPaginacao();
@@ -75,10 +80,11 @@ function bubbleSort(arr, key, crescente = true) {
 // Função que ordena a tabela com base no campo clicado
 function ordenarTabela(campo) {
   // Inverte a ordem se o mesmo campo for clicado novamente
-  ordemAtual =
-    ordemAtual.campo === campo
-      ? { campo, crescente: !ordemAtual.crescente }
-      : { campo, crescente: true };
+  if (ordemAtual.campo === campo) {
+    ordemAtual = { campo, crescente: !ordemAtual.crescente };
+  } else {
+    ordemAtual = { campo, crescente: true };
+  }
 
   // Ordena o array de usuários
   bubbleSort(usuarios, ordemAtual.campo, ordemAtual.crescente);

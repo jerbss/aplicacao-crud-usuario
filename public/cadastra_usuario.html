@@ -23,11 +23,37 @@
     <script>
       const formulario = document.getElementById("formulario");
       formulario.addEventListener("submit", (event) => {
-        event.preventDefault();
+        event.preventDefault(); //captura o evento e envia para o resto da pagina
         const nome = document.getElementById("nome").value;
         const idade = document.getElementById("idade").value;
         const endereco = document.getElementById("endereco").value;
+
+        /*
+          fetch().then() // Método para tratamento de algo assíncrono. Substitui o async/await.
+          //Isto é chamado de Promise
+        */
         const email = document.getElementById("email").value;
+
+        /*
+        No fetch() utilizado no arquivo scrpt.js, tínhamos isso:
+        async function carrega_usuarios(){
+          const resposta = await fetch("/list-users/200");
+          usuarios = await resposta.json();
+          return usuarios;
+        }
+        Posso transformar isso, para:
+
+
+        fetch("/list-users/200")
+          .then((resposta) => resposta.json())
+          .then((usuarios) => {
+            return usuarios;
+          })
+
+          Vou usar esta segunda notação, mais simples, no código a seguir.
+
+        */
+
         fetch("/cadastrar-usuario", {
           method: "POST",
           headers: {
@@ -35,13 +61,24 @@
           },
           body: JSON.stringify({ nome, idade, endereco, email }), // Envia os dados do formulário como JSON
         })
-          .then((response) => response.json())
-          .then((data) => {
+        .then((resposta) => resposta.json()) 
+        /*
+            (resposta) => resposta.json() //Arrow Function
+            
+                      |
+                      V
+
+                      (resposta)=>{
+                        return resposta.json()
+                      }
+
+        */
+        .then((data) => {
             const mensagem = document.getElementById("mensagem");
             const novoUsuario = document.getElementById("novoUsuario");
 
             if (data.ok) {
-              mensagem.textContent = data.message;
+              mensagem.innerHTML = data.message;
               novoUsuario.innerHTML = `
                 <p>Nome: ${data.usuario.nome}</p>
                 <p>Idade: ${data.usuario.idade}</p>
@@ -60,7 +97,7 @@
           //       mensagem.textContent = "Erro ao cadastrar usuário.";
           //     }
           //   })
-          .catch((error) => {
+          .catch((error) => { //Trata algum erro na "cadeia" de eventos tratada pela Promise
             console.error("Erro:", error);
           });
       });

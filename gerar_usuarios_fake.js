@@ -3,8 +3,7 @@
 const fs = require("fs");
 const { faker } = require("@faker-js/faker");
 const { v4: uuidv4 } = require("uuid");
-
-const TOTAL_USUARIOS = 1_000;
+const TOTAL_USUARIOS = 10_000;
 const LOTE = 100;
 const ARQUIVO = "usuarios.json";
 

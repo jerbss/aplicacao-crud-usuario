@@ -1,0 +1,6 @@
+{
+  "nome": "'); console.log(\"INJETADO\"); var a = ('",
+  "idade": 30,
+  "endereco": "Rua Exploit",
+  "email": "mal@icioso.com"
+}
