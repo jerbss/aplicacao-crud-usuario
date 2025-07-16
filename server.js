@@ -1,123 +1,146 @@
-/**
- * server.js
- *
- * Servidor Express para cadastro e listagem de usuários usando armazenamento em arquivo JSON com controle de concorrência.
- *
- * Funcionalidades:
- * - Servir arquivos estáticos da pasta /public (ex: index.html).
- * - Rota GET /list-users/:count? para listar até N usuários cadastrados.
- * - Rota POST /cadastrar-usuario para cadastrar novo usuário com ID único.
- * - Persistência em arquivo JSON com bloqueio de escrita/leitura seguro (via proper-lockfile).
- *
- * Autor: Wellington (com pitacos do Braniac 😎)
- * Data: 2025
- */
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const { v4: uuidv4 } = require("uuid");
+const { lerUsuarios, salvarUsuarios } = require("./users-control.js");
 
-// -----------------------------------------------------------------------------
-// IMPORTAÇÃO DE MÓDULOS
-// -----------------------------------------------------------------------------
-
-const express = require("express"); // Framework para criação de APIs e servidores HTTP
-const cors = require("cors"); // Middleware para permitir requisições de outras origens (CORS)
-const path = require("path"); // Lida com caminhos de arquivos e diretórios
-const { v4: uuidv4 } = require("uuid"); // Gera IDs únicos universais (UUID v4)
-
-const { lerUsuarios, salvarUsuarios } = require("./users-control.js"); // Módulo de controle de leitura/escrita com lock
-
-// -----------------------------------------------------------------------------
-// CONFIGURAÇÃO DO SERVIDOR
-// -----------------------------------------------------------------------------
-
-const app = express(); // Cria uma aplicação Express
-
-// Define o host e a porta (usa variáveis de ambiente se existirem)
+const app = express();
 const HOST = process.env.HOST || "localhost";
 const PORT = process.env.PORT || 3000;
 
-// Ativa o parser de JSON para o corpo das requisições
 app.use(express.json());
-
-// Define a pasta "public" como estática (servirá arquivos HTML, CSS, etc.)
 app.use(express.static(path.join(__dirname, "public")));
-
-// Habilita CORS para permitir requisições de outras origens
 app.use(cors());
 
-// -----------------------------------------------------------------------------
-// ROTAS
-// -----------------------------------------------------------------------------
-
-/**
- * Rota principal - GET /
- * Retorna o arquivo HTML inicial (index.html) da pasta "public"
- */
+// Rota principal - GET /
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-/**
- * Rota GET /list-users/:count?
- * Retorna um número limitado de usuários do arquivo usuarios.json
- *
- * @param {number} count (opcional) - número máximo de usuários a retornar (default: 100)
- */
+// Rota GET /list-users/:count?
 app.get("/list-users/:count?", async (req, res) => {
-  let num = parseInt(req.params.count, 10); // Converte o parâmetro para número inteiro
-  if (isNaN(num)) num = 100; // Valor padrão se não for fornecido
-  num = Math.max(1, Math.min(10000, num)); // Garante que o número esteja entre 1 e 10.000
+  let num = parseInt(req.params.count, 10);
+  if (isNaN(num)) num = 100;
+  num = Math.max(1, Math.min(10000, num));
 
-  console.log(`🔍 Solicitando até ${num} usuários...`);
+  console.log(`Solicitando ate ${num} usuarios...`);
   try {
-    const todos = await lerUsuarios(); // Lê todos os usuários do arquivo
-    const slice = todos.slice(0, num); // Pega os primeiros N usuários
-    console.log(`✔️  Primeiro usuário: ${JSON.stringify(slice[0])}`);
-    res.json(slice); // Retorna os usuários como JSON
+    const todos = await lerUsuarios();
+    const slice = todos.slice(0, num);
+    res.json(slice);
   } catch (err) {
-    console.error("❌ Falha ao ler usuários:", err);
-    res.status(500).json({ error: "Não foi possível ler usuários." });
+    console.error("Falha ao ler usuarios:", err);
+    res.status(500).json({ error: "Nao foi possivel ler usuarios." });
   }
 });
 
-/**
- * Rota POST /cadastrar-usuario
- * Recebe dados no corpo da requisição e adiciona um novo usuário ao arquivo JSON.
- *
- * @body {string} nome - Nome do usuário
- * @body {number} idade - Idade do usuário
- * @body {string} endereco - Endereço
- * @body {string} email - E-mail
- */
+// Rota POST /cadastrar-usuario
 app.post("/cadastrar-usuario", async (req, res) => {
   try {
-    const usuarios = await lerUsuarios(); // Garante dados atualizados
-
+    const usuarios = await lerUsuarios();
     const novoUsuario = {
-      id: uuidv4(), // Gera um UUID para o novo usuário
+      id: uuidv4(),
       nome: req.body.nome,
       idade: req.body.idade,
       endereco: req.body.endereco,
       email: req.body.email,
     };
-
-    usuarios.push(novoUsuario); // Adiciona à lista
-    await salvarUsuarios(usuarios); // Salva no arquivo com lock
-    console.log(`✔️ Usuário cadastrado: ${JSON.stringify(novoUsuario)}`);
+    usuarios.push(novoUsuario);
+    await salvarUsuarios(usuarios);
+    console.log(`Usuario cadastrado: ${JSON.stringify(novoUsuario)}`);
     res.status(201).json({
       ok: true,
-      message: "Usuário cadastrado com sucesso!",
+      message: "Usuario cadastrado com sucesso!",
       usuario: novoUsuario,
     });
   } catch (err) {
-    console.error("❌ Erro ao cadastrar usuário:", err);
-    res.status(500).json({ error: "Não foi possível cadastrar usuário." });
+    console.error("Erro ao cadastrar usuario:", err);
+    res.status(500).json({ error: "Nao foi possivel cadastrar usuario." });
   }
 });
 
 // -----------------------------------------------------------------------------
-// EXECUÇÃO DO SERVIDOR
+// NOVAS ROTAS - ATUALIZAR E REMOVER
 // -----------------------------------------------------------------------------
 
-// Inicia o servidor e escuta na porta especificada
+/**
+ * Rota GET /usuarios/:id
+ * Retorna um usuário específico pelo ID.
+ * Essencial para preencher o formulário de edição.
+ */
+app.get("/usuarios/:id", async (req, res) => {
+  try {
+    const usuarios = await lerUsuarios();
+    const usuario = usuarios.find(u => u.id === req.params.id);
+    if (!usuario) {
+      return res.status(404).json({ error: "Usuario nao encontrado." });
+    }
+    res.json(usuario);
+  } catch (err) {
+    console.error("Falha ao buscar usuario:", err);
+    res.status(500).json({ error: "Nao foi possivel buscar o usuario." });
+  }
+});
+
+/**
+ * Rota PUT /usuarios/:id (RF0005: Atualizar)
+ * Atualiza os dados de um usuário específico.
+ */
+app.put("/usuarios/:id", async (req, res) => {
+  try {
+    const usuarios = await lerUsuarios();
+    const index = usuarios.findIndex(u => u.id === req.params.id);
+
+    if (index === -1) {
+      return res.status(404).json({ error: "Usuario nao encontrado." });
+    }
+
+    // Mescla o usuário existente com os novos dados do corpo da requisição
+    const usuarioAtualizado = { ...usuarios[index], ...req.body };
+    usuarios[index] = usuarioAtualizado;
+
+    await salvarUsuarios(usuarios);
+    console.log(`Usuario atualizado: ${JSON.stringify(usuarioAtualizado)}`);
+    res.json({
+      ok: true,
+      message: "Usuario atualizado com sucesso!",
+      usuario: usuarioAtualizado,
+    });
+  } catch (err) {
+    console.error("Erro ao atualizar usuario:", err);
+    res.status(500).json({ error: "Nao foi possivel atualizar o usuario." });
+  }
+});
+
+/**
+ * Rota DELETE /usuarios/:id (RF0006: Remover)
+ * Remove um usuário do sistema pelo ID.
+ */
+app.delete("/usuarios/:id", async (req, res) => {
+  try {
+    let usuarios = await lerUsuarios();
+    const tamanhoOriginal = usuarios.length;
+    
+    // Filtra o array, mantendo todos os usuários exceto o que corresponde ao ID
+    usuarios = usuarios.filter(u => u.id !== req.params.id);
+
+    if (usuarios.length === tamanhoOriginal) {
+      return res.status(404).json({ error: "Usuario nao encontrado." });
+    }
+
+    await salvarUsuarios(usuarios);
+    console.log(`Usuario com ID ${req.params.id} removido.`);
+    res.status(200).json({ 
+      ok: true, 
+      message: "Usuario removido com sucesso!" 
+    });
+  } catch (err) {
+    console.error("Erro ao remover usuario:", err);
+    res.status(500).json({ error: "Nao foi possivel remover o usuario." });
+  }
+});
+
+// Inicia o servidor
 app.listen(PORT, HOST, () => {
-  console.log(`🚀 Servidor rodando em http://${HOST}:${PORT}`);
+  console.log(`Servidor rodando em http://${HOST}:${PORT}`);
 });

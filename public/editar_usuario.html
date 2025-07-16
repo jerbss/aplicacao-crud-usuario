@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Editar Usuário</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>Editar Usuário</h1>
+    <form id="formularioEdicao">
+      <input type="hidden" id="usuarioId" />
+      <div>
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" required />
+      </div>
+      <div>
+        <label for="idade">Idade:</label>
+        <input type="number" id="idade" required />
+      </div>
+      <div>
+        <label for="endereco">Endereço:</label>
+        <input type="text" id="endereco" required />
+      </div>
+      <div>
+        <label for="email">Email:</label>
+        <input type="email" id="email" required />
+      </div>
+      <button type="submit">Salvar Alterações</button>
+    </form>
+    <div id="mensagem" style="margin-top: 15px"></div>
+    <a href="index.html" style="display: block; margin-top: 10px"
+      >Voltar para a Lista</a
+    >
+
+    <script>
+      // Script para carregar e enviar os dados do usuário
+      window.onload = async () => {
+        // 1. Pega o ID do usuário da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get("id");
+
+        if (!userId) {
+          window.location.href = "index.html"; // Se não tiver ID, volta para a lista
+          return;
+        }
+
+        try {
+          // 2. Busca os dados do usuário específico na API
+          const resposta = await fetch(`/usuarios/${userId}`);
+          if (!resposta.ok) {
+            throw new Error("Usuário não encontrado");
+          }
+          const usuario = await resposta.json();
+
+          // 3. Preenche o formulário com os dados recebidos
+          document.getElementById("usuarioId").value = usuario.id;
+          document.getElementById("nome").value = usuario.nome;
+          document.getElementById("idade").value = usuario.idade;
+          document.getElementById("endereco").value = usuario.endereco;
+          document.getElementById("email").value = usuario.email;
+        } catch (error) {
+          document.getElementById("mensagem").textContent =
+            "Erro ao carregar dados do usuário.";
+          console.error(error);
+        }
+      };
+
+      // 4. Adiciona o evento de submit ao formulário
+      document
+        .getElementById("formularioEdicao")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const id = document.getElementById("usuarioId").value;
+          const dadosAtualizados = {
+            nome: document.getElementById("nome").value,
+            idade: parseInt(document.getElementById("idade").value, 10),
+            endereco: document.getElementById("endereco").value,
+            email: document.getElementById("email").value,
+          };
+
+          try {
+            const resposta = await fetch(`/usuarios/${id}`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(dadosAtualizados),
+            });
+
+            const resultado = await resposta.json();
+            const mensagemDiv = document.getElementById("mensagem");
+
+            if (resultado.ok) {
+              mensagemDiv.style.color = "green";
+              mensagemDiv.textContent = resultado.message;
+              // Redireciona para a home após 2 segundos
+              setTimeout(() => {
+                window.location.href = "index.html";
+              }, 2000);
+            } else {
+              mensagemDiv.style.color = "red";
+              mensagemDiv.textContent = "Erro: " + resultado.error;
+            }
+          } catch (error) {
+            console.error("Falha ao atualizar:", error);
+            document.getElementById("mensagem").textContent =
+              "Falha na comunicação com o servidor.";
+          }
+        });
+    </script>
+  </body>
+</html>
